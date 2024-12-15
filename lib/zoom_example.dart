@@ -42,37 +42,61 @@ class _ZoomExampleState extends State<ZoomExample> {
     final scale = _controller.value.getMaxScaleOnAxis();
     final translation = getTranslationFromMatrix();
     final adjustedTranslation = getTranslationForIOS();
+    final devicePixelRatio = MediaQuery.of(context).devicePixelRatio;
 
-    // Calculate viewport center in Flutter coordinates
-    final viewportCenterX = width / 2;
-    final viewportCenterY = height / 2;
+    // Flutter coordinates calculations (in logical pixels)
+    final flutterViewportCenterX = width / 2;
+    final flutterViewportCenterY = height / 2;
+    final flutterVisibleWidth = width / scale;
+    final flutterVisibleHeight = height / scale;
+    final flutterVisibleTopLeftX = -translation.dx / scale;
+    final flutterVisibleTopLeftY = -translation.dy / scale;
+    final flutterVisibleCenterX = flutterVisibleTopLeftX + (flutterVisibleWidth / 2);
+    final flutterVisibleCenterY = flutterVisibleTopLeftY + (flutterVisibleHeight / 2);
 
-    // Calculate the actual visible region
-    final visibleWidth = width / scale;
-    final visibleHeight = height / scale;
-
-    // Calculate top-left corner of visible region
-    final visibleTopLeftX = -translation.dx / scale;
-    final visibleTopLeftY = -translation.dy / scale;
-
-    // Calculate center of visible region
-    final visibleCenterX = visibleTopLeftX + (visibleWidth / 2);
-    final visibleCenterY = visibleTopLeftY + (visibleHeight / 2);
+    // iOS coordinates calculations (in points)
+    final iosWidth = width / devicePixelRatio;
+    final iosHeight = height / devicePixelRatio;
+    final iosScale = scale * devicePixelRatio;
+    final iosVisibleWidth = iosWidth / scale;
+    final iosVisibleHeight = iosHeight / scale;
+    final iosVisibleTopLeftX = -adjustedTranslation.dx / scale;
+    final iosVisibleTopLeftY = -adjustedTranslation.dy / scale;
 
     print('''
-=== Flutter Transformation Details ===
+=== Coordinate System Comparison ===
+Device Pixel Ratio: ${devicePixelRatio.toStringAsFixed(2)}
+
+FLUTTER COORDINATES (Logical Pixels):
 Container Size: ${width.toStringAsFixed(2)} x ${height.toStringAsFixed(2)}
 Scale: ${scale.toStringAsFixed(2)}
-Original Translation: (${translation.dx.toStringAsFixed(2)}, ${translation.dy.toStringAsFixed(2)})
-Adjusted Translation for iOS: (${adjustedTranslation.dx.toStringAsFixed(2)}, ${adjustedTranslation.dy.toStringAsFixed(2)})
-Viewport Center: (${viewportCenterX.toStringAsFixed(2)}, ${viewportCenterY.toStringAsFixed(2)})
-Visible Region Size: ${visibleWidth.toStringAsFixed(2)} x ${visibleHeight.toStringAsFixed(2)}
-Visible Region Top-Left: (${visibleTopLeftX.toStringAsFixed(2)}, ${visibleTopLeftY.toStringAsFixed(2)})
-Visible Region Center: (${visibleCenterX.toStringAsFixed(2)}, ${visibleCenterY.toStringAsFixed(2)})
-Raw Matrix:
+Translation: (${translation.dx.toStringAsFixed(2)}, ${translation.dy.toStringAsFixed(2)})
+Viewport Center: (${flutterViewportCenterX.toStringAsFixed(2)}, ${flutterViewportCenterY.toStringAsFixed(2)})
+Visible Region:
+  - Size: ${flutterVisibleWidth.toStringAsFixed(2)} x ${flutterVisibleHeight.toStringAsFixed(2)}
+  - Top-Left: (${flutterVisibleTopLeftX.toStringAsFixed(2)}, ${flutterVisibleTopLeftY.toStringAsFixed(2)})
+  - Center: (${flutterVisibleCenterX.toStringAsFixed(2)}, ${flutterVisibleCenterY.toStringAsFixed(2)})
+
+iOS COORDINATES (Points):
+Container Size: ${iosWidth.toStringAsFixed(2)} x ${iosHeight.toStringAsFixed(2)}
+Scale: ${iosScale.toStringAsFixed(2)}
+Translation: (${adjustedTranslation.dx.toStringAsFixed(2)}, ${adjustedTranslation.dy.toStringAsFixed(2)})
+Visible Region:
+  - Size: ${iosVisibleWidth.toStringAsFixed(2)} x ${iosVisibleHeight.toStringAsFixed(2)}
+  - Top-Left: (${iosVisibleTopLeftX.toStringAsFixed(2)}, ${iosVisibleTopLeftY.toStringAsFixed(2)})
+
+Raw Transformation Matrix:
 ${_formatMatrix(_matrix)}
 ==============================
-    ''');
+''');
+
+    print('''
+=== Values Being Sent to iOS ===
+Container Size: ${iosWidth.toStringAsFixed(2)} x ${iosHeight.toStringAsFixed(2)}
+Scale: ${iosScale.toStringAsFixed(2)}
+Translation: (${adjustedTranslation.dx.toStringAsFixed(2)}, ${adjustedTranslation.dy.toStringAsFixed(2)})
+==================
+''');
   }
 
   String _formatMatrix(Matrix4 matrix) {
@@ -92,61 +116,65 @@ ${_formatMatrix(_matrix)}
   Offset getTranslationForIOS() {
     final translation = getTranslationFromMatrix();
     final scale = _controller.value.getMaxScaleOnAxis();
+    final devicePixelRatio = MediaQuery.of(context).devicePixelRatio;
 
-    // Add scale-based offset adjustment (half of width/height multiplied by scale)
-    // this is just a experiment that does not work
-    final scaleOffsetX = (width / 4) * (scale-1)*0;
-    final scaleOffsetY = (width ) * (scale-1) *0;
+    // 1. Convert Flutter's logical pixels to iOS points by dividing by device pixel ratio
+    final flutterToIosX = translation.dx / devicePixelRatio;
+    final flutterToIosY = translation.dy / devicePixelRatio;
 
-    // Flip Y coordinate for iOS coordinate system
-    final flippedDY = -translation.dy;
-
-    // Adjust for coordinate system difference and scaling
-    final adjustedDX = -(translation.dx + scaleOffsetX);
-    final adjustedDY = -(flippedDY + scaleOffsetY);
+    // 2. Adjust for coordinate system differences:
+    // - Flutter: origin at top-left, positive Y goes down
+    // - iOS: origin at top-left, positive Y goes down (same as Flutter, no flip needed)
+    // - We negate the translation because moving content right/down in Flutter
+    //   means moving the viewport left/up in iOS
+    final adjustedDX = -flutterToIosX;
+    final adjustedDY = -flutterToIosY;
 
     return Offset(adjustedDX, adjustedDY);
   }
 
   Future<void> applyTransformation() async {
     try {
-      final scale = _controller.value.getMaxScaleOnAxis();
-      final adjustedTranslation = getTranslationForIOS();
-
-      // Only log when floating action button is pressed
+      // Log transformation details before processing
       _logTransformationDetails();
-      print('''
-=== Sending to iOS ===
-Original Translation: ${getTranslationFromMatrix()}
-Adjusted Translation: $adjustedTranslation
-Height: $height
-Width: $width
-Scale: $scale
-==================
-      ''');
 
-      showSpinnerLoadingModal(
-          context: context, title: 'Applying Transformation');
-      final data = await rootBundle.load(
-        'assets/fashion_02_background.jpg',
-      );
+      final devicePixelRatio = MediaQuery.of(context).devicePixelRatio;
+      final scale = _controller.value.getMaxScaleOnAxis();
+      final translation = getTranslationForIOS();
+
+      // Print key values in a more concise format
+      print('''
+=== IMPORTANT TRANSFORMATION VALUES ===
+Scale: ${scale.toStringAsFixed(2)}
+Device Pixel Ratio: ${devicePixelRatio.toStringAsFixed(2)}
+Flutter Translation: ${getTranslationFromMatrix().dx.toStringAsFixed(2)}, ${getTranslationFromMatrix().dy.toStringAsFixed(2)}
+iOS Translation: ${translation.dx.toStringAsFixed(2)}, ${translation.dy.toStringAsFixed(2)}
+Container Size (Flutter): ${width.toStringAsFixed(2)} x ${height.toStringAsFixed(2)}
+Container Size (iOS): ${(width/devicePixelRatio).toStringAsFixed(2)} x ${(height/devicePixelRatio).toStringAsFixed(2)}
+===================================
+''');
+
+      // Convert dimensions to iOS points
+      final iosWidth = width / devicePixelRatio;
+      final iosHeight = height / devicePixelRatio;
+
+      final data = await rootBundle.load('assets/fashion_02_background.jpg');
       final List<int> bytes = data.buffer.asUint8List();
       final tempPath = await getTemporaryDirectory();
-      final tempFilename =
-          '${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final tempFilename = '${DateTime.now().millisecondsSinceEpoch}.jpg';
       final tempFile = File('${tempPath.path}/$tempFilename');
 
       await tempFile.writeAsBytes(bytes);
 
+
       await MethodChannelHelper().testTransform(
-        height: height,
-        width: width,
-        scale: scale,
-        dx: adjustedTranslation.dx,
-        dy: adjustedTranslation.dy,
+        height: iosHeight,
+        width: iosWidth,
+        scale: 2,
+        dx: iosWidth - 71.33,
+        dy: 71.33,
         imagePath: tempFile.path,
       );
-      Navigator.of(context).pop();
     } catch (error, stackTrace) {
       print('Error in applyTransformation: $error');
       print('Stack trace: $stackTrace');
@@ -192,11 +220,13 @@ Scale: $scale
                               transformationController: _controller,
                               boundaryMargin: const EdgeInsets.all(20.0),
                               minScale: 0.1,
-                              maxScale: 4.0,
-                              child: Image.asset(
+                              maxScale: 2.0,
+                              child: Container(
+                                color: Colors.black,
+                                child: Image.asset(
                                 'assets/fashion_02_background.jpg',
                                 fit: BoxFit.contain,
-                              ),
+                              )),
                             ),
                           ),
                         ],

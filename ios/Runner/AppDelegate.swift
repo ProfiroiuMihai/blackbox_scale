@@ -80,54 +80,36 @@ import UIKit
   }
     
     
-    func processImage(_ image: UIImage, containerSize: CGSize, scale: CGPoint, offset: CGPoint) -> UIImage? {
-        UIGraphicsBeginImageContextWithOptions(containerSize, false, 0.0)
-        defer { UIGraphicsEndImageContext() }
-        
-        guard let context = UIGraphicsGetCurrentContext(),
-              let cgImage = image.cgImage else {
-            return nil
-        }
-        
-        // Clear the context
-        context.clear(CGRect(origin: .zero, size: containerSize))
-        
-        // Flip the coordinate system
-        context.translateBy(x: 0, y: containerSize.height)
-        context.scaleBy(x: 1.0, y: -1.0)
-        
-        // Calculate container and image aspects for initial fit
-        let containerAspect = containerSize.width / containerSize.height
-        let imageAspect = image.size.width / image.size.height
-        
-        // Calculate initial fit size (this matches BoxFit.contain)
-        var initialWidth: CGFloat
-        var initialHeight: CGFloat
-        
-        if imageAspect > containerAspect {
-            initialWidth = containerSize.width
-            initialHeight = containerSize.width / imageAspect
-        } else {
-            initialHeight = containerSize.height
-            initialWidth = containerSize.height * imageAspect
-        }
-        
-        // Calculate center position
-        let centerX = containerSize.width / 2
-        let centerY = containerSize.height / 2
-        
-        // Calculate drawing rect
-        let drawingRect = CGRect(
-            x: centerX - (initialWidth * scale.x) / 2 + offset.x,
-            y: centerY - (initialHeight * scale.x) / 2 - offset.y,
-            width: initialWidth * scale.x,
-            height: initialHeight * scale.x
-        )
-        
-        // Draw the image
-        context.draw(cgImage, in: drawingRect)
-        
-        return UIGraphicsGetImageFromCurrentImageContext()
-    }
-    
+   func processImage(_ image: UIImage, containerSize: CGSize, scale: CGPoint, offset: CGPoint) -> UIImage? {
+       UIGraphicsBeginImageContextWithOptions(containerSize, false, 0.0)
+       defer { UIGraphicsEndImageContext() }
+
+       guard let context = UIGraphicsGetCurrentContext(),
+             let cgImage = image.cgImage else {
+           return nil
+       }
+
+       // Clear the context
+       context.clear(CGRect(origin: .zero, size: containerSize))
+
+       // Flip the coordinate system
+       context.translateBy(x: 0, y: containerSize.height)
+       context.scaleBy(x: 1.0, y: -1.0)
+
+       // Since we're receiving pre-calculated scale and offset from Flutter,
+       // we don't need to recalculate the aspect ratio or do additional scaling
+
+       // Calculate the drawing rect directly from the provided scale and offset
+       let drawingRect = CGRect(
+           x: offset.x,
+           y: offset.y,
+           width: containerSize.width * scale.x,
+           height: containerSize.height * scale.x
+       )
+
+       // Draw the image
+       context.draw(cgImage, in: drawingRect)
+
+       return UIGraphicsGetImageFromCurrentImageContext()
+   }
 }

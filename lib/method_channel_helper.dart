@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 class MethodChannelHelper {
   static const platformChannel = MethodChannel('com.blackbox_scale.app/helper');
 
+//we need to reverse dx and dy for some reason are the opposite
 
   Future<void> testTransform({
     required double height,
