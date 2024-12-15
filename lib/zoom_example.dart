@@ -1,4 +1,3 @@
-
 import 'dart:io';
 import 'package:blackbox_scale/method_channel_helper.dart';
 import 'package:flutter/material.dart';
@@ -39,6 +38,43 @@ class _ZoomExampleState extends State<ZoomExample> {
     });
   }
 
+  void _logTransformationDetails() {
+    final scale = _controller.value.getMaxScaleOnAxis();
+    final translation = getTranslationFromMatrix();
+    final adjustedTranslation = getTranslationForIOS();
+
+    // Calculate viewport center in Flutter coordinates
+    final viewportCenterX = width / 2;
+    final viewportCenterY = height / 2;
+
+    // Calculate the actual visible region
+    final visibleWidth = width / scale;
+    final visibleHeight = height / scale;
+
+    // Calculate top-left corner of visible region
+    final visibleTopLeftX = -translation.dx / scale;
+    final visibleTopLeftY = -translation.dy / scale;
+
+    // Calculate center of visible region
+    final visibleCenterX = visibleTopLeftX + (visibleWidth / 2);
+    final visibleCenterY = visibleTopLeftY + (visibleHeight / 2);
+
+    print('''
+=== Flutter Transformation Details ===
+Container Size: ${width.toStringAsFixed(2)} x ${height.toStringAsFixed(2)}
+Scale: ${scale.toStringAsFixed(2)}
+Original Translation: (${translation.dx.toStringAsFixed(2)}, ${translation.dy.toStringAsFixed(2)})
+Adjusted Translation for iOS: (${adjustedTranslation.dx.toStringAsFixed(2)}, ${adjustedTranslation.dy.toStringAsFixed(2)})
+Viewport Center: (${viewportCenterX.toStringAsFixed(2)}, ${viewportCenterY.toStringAsFixed(2)})
+Visible Region Size: ${visibleWidth.toStringAsFixed(2)} x ${visibleHeight.toStringAsFixed(2)}
+Visible Region Top-Left: (${visibleTopLeftX.toStringAsFixed(2)}, ${visibleTopLeftY.toStringAsFixed(2)})
+Visible Region Center: (${visibleCenterX.toStringAsFixed(2)}, ${visibleCenterY.toStringAsFixed(2)})
+Raw Matrix:
+${_formatMatrix(_matrix)}
+==============================
+    ''');
+  }
+
   String _formatMatrix(Matrix4 matrix) {
     return 'Matrix4(\n'
         '  ${matrix.storage[0].toStringAsFixed(2)}, ${matrix.storage[1].toStringAsFixed(2)}, ${matrix.storage[2].toStringAsFixed(2)}, ${matrix.storage[3].toStringAsFixed(2)},\n'
@@ -50,12 +86,45 @@ class _ZoomExampleState extends State<ZoomExample> {
 
   Offset getTranslationFromMatrix() {
     final matrix = _controller.value;
-    // Translation is stored in the last row (indices 12 and 13 for x, y respectively)
     return Offset(matrix.storage[12], matrix.storage[13]);
+  }
+
+  Offset getTranslationForIOS() {
+    final translation = getTranslationFromMatrix();
+    final scale = _controller.value.getMaxScaleOnAxis();
+
+    // Add scale-based offset adjustment (half of width/height multiplied by scale)
+    // this is just a experiment that does not work
+    final scaleOffsetX = (width / 4) * (scale-1)*0;
+    final scaleOffsetY = (width ) * (scale-1) *0;
+
+    // Flip Y coordinate for iOS coordinate system
+    final flippedDY = -translation.dy;
+
+    // Adjust for coordinate system difference and scaling
+    final adjustedDX = -(translation.dx + scaleOffsetX);
+    final adjustedDY = -(flippedDY + scaleOffsetY);
+
+    return Offset(adjustedDX, adjustedDY);
   }
 
   Future<void> applyTransformation() async {
     try {
+      final scale = _controller.value.getMaxScaleOnAxis();
+      final adjustedTranslation = getTranslationForIOS();
+
+      // Only log when floating action button is pressed
+      _logTransformationDetails();
+      print('''
+=== Sending to iOS ===
+Original Translation: ${getTranslationFromMatrix()}
+Adjusted Translation: $adjustedTranslation
+Height: $height
+Width: $width
+Scale: $scale
+==================
+      ''');
+
       showSpinnerLoadingModal(
           context: context, title: 'Applying Transformation');
       final data = await rootBundle.load(
@@ -69,18 +138,19 @@ class _ZoomExampleState extends State<ZoomExample> {
 
       await tempFile.writeAsBytes(bytes);
 
-      final scale = _controller.value.getMaxScaleOnAxis();
-      final translation = getTranslationFromMatrix();
       await MethodChannelHelper().testTransform(
         height: height,
         width: width,
         scale: scale,
-        dx: translation.dx,
-        dy: translation.dy,
+        dx: adjustedTranslation.dx,
+        dy: adjustedTranslation.dy,
         imagePath: tempFile.path,
       );
       Navigator.of(context).pop();
-    } catch (error, _) {}
+    } catch (error, stackTrace) {
+      print('Error in applyTransformation: $error');
+      print('Stack trace: $stackTrace');
+    }
   }
 
   @override
@@ -88,7 +158,7 @@ class _ZoomExampleState extends State<ZoomExample> {
     return Scaffold(
       floatingActionButton: FloatingActionButton.extended(
         onPressed: applyTransformation,
-        label: const Text('Save To IOS View'),
+        label: const Text('Save To iOS View'),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
