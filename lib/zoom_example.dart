@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 
-import 'helpers.dart';
 
 class ZoomExample extends StatefulWidget {
   const ZoomExample({super.key});
@@ -38,66 +37,7 @@ class _ZoomExampleState extends State<ZoomExample> {
     });
   }
 
-  void _logTransformationDetails() {
-    final scale = _controller.value.getMaxScaleOnAxis();
-    final translation = getTranslationFromMatrix();
-    final adjustedTranslation = getTranslationForIOS();
-    final devicePixelRatio = MediaQuery.of(context).devicePixelRatio;
 
-    // Flutter coordinates calculations (in logical pixels)
-    final flutterViewportCenterX = width / 2;
-    final flutterViewportCenterY = height / 2;
-    final flutterVisibleWidth = width / scale;
-    final flutterVisibleHeight = height / scale;
-    final flutterVisibleTopLeftX = -translation.dx / scale;
-    final flutterVisibleTopLeftY = -translation.dy / scale;
-    final flutterVisibleCenterX = flutterVisibleTopLeftX + (flutterVisibleWidth / 2);
-    final flutterVisibleCenterY = flutterVisibleTopLeftY + (flutterVisibleHeight / 2);
-
-    // iOS coordinates calculations (in points)
-    final iosWidth = width / devicePixelRatio;
-    final iosHeight = height / devicePixelRatio;
-    final iosScale = scale * devicePixelRatio;
-    final iosVisibleWidth = iosWidth / scale;
-    final iosVisibleHeight = iosHeight / scale;
-    final iosVisibleTopLeftX = -adjustedTranslation.dx / scale;
-    final iosVisibleTopLeftY = -adjustedTranslation.dy / scale;
-
-    print('''
-=== Coordinate System Comparison ===
-Device Pixel Ratio: ${devicePixelRatio.toStringAsFixed(2)}
-
-FLUTTER COORDINATES (Logical Pixels):
-Container Size: ${width.toStringAsFixed(2)} x ${height.toStringAsFixed(2)}
-Scale: ${scale.toStringAsFixed(2)}
-Translation: (${translation.dx.toStringAsFixed(2)}, ${translation.dy.toStringAsFixed(2)})
-Viewport Center: (${flutterViewportCenterX.toStringAsFixed(2)}, ${flutterViewportCenterY.toStringAsFixed(2)})
-Visible Region:
-  - Size: ${flutterVisibleWidth.toStringAsFixed(2)} x ${flutterVisibleHeight.toStringAsFixed(2)}
-  - Top-Left: (${flutterVisibleTopLeftX.toStringAsFixed(2)}, ${flutterVisibleTopLeftY.toStringAsFixed(2)})
-  - Center: (${flutterVisibleCenterX.toStringAsFixed(2)}, ${flutterVisibleCenterY.toStringAsFixed(2)})
-
-iOS COORDINATES (Points):
-Container Size: ${iosWidth.toStringAsFixed(2)} x ${iosHeight.toStringAsFixed(2)}
-Scale: ${iosScale.toStringAsFixed(2)}
-Translation: (${adjustedTranslation.dx.toStringAsFixed(2)}, ${adjustedTranslation.dy.toStringAsFixed(2)})
-Visible Region:
-  - Size: ${iosVisibleWidth.toStringAsFixed(2)} x ${iosVisibleHeight.toStringAsFixed(2)}
-  - Top-Left: (${iosVisibleTopLeftX.toStringAsFixed(2)}, ${iosVisibleTopLeftY.toStringAsFixed(2)})
-
-Raw Transformation Matrix:
-${_formatMatrix(_matrix)}
-==============================
-''');
-
-    print('''
-=== Values Being Sent to iOS ===
-Container Size: ${iosWidth.toStringAsFixed(2)} x ${iosHeight.toStringAsFixed(2)}
-Scale: ${iosScale.toStringAsFixed(2)}
-Translation: (${adjustedTranslation.dx.toStringAsFixed(2)}, ${adjustedTranslation.dy.toStringAsFixed(2)})
-==================
-''');
-  }
 
   String _formatMatrix(Matrix4 matrix) {
     return 'Matrix4(\n'
@@ -135,24 +75,12 @@ Translation: (${adjustedTranslation.dx.toStringAsFixed(2)}, ${adjustedTranslatio
 
   Future<void> applyTransformation() async {
     try {
-      // Log transformation details before processing
-      _logTransformationDetails();
 
       final devicePixelRatio = MediaQuery.of(context).devicePixelRatio;
       final scale = _controller.value.getMaxScaleOnAxis();
-      final translation = getTranslationForIOS();
 
       // Print key values in a more concise format
-      print('''
-=== IMPORTANT TRANSFORMATION VALUES ===
-Scale: ${scale.toStringAsFixed(2)}
-Device Pixel Ratio: ${devicePixelRatio.toStringAsFixed(2)}
-Flutter Translation: ${getTranslationFromMatrix().dx.toStringAsFixed(2)}, ${getTranslationFromMatrix().dy.toStringAsFixed(2)}
-iOS Translation: ${translation.dx.toStringAsFixed(2)}, ${translation.dy.toStringAsFixed(2)}
-Container Size (Flutter): ${width.toStringAsFixed(2)} x ${height.toStringAsFixed(2)}
-Container Size (iOS): ${(width/devicePixelRatio).toStringAsFixed(2)} x ${(height/devicePixelRatio).toStringAsFixed(2)}
-===================================
-''');
+
 
       // Convert dimensions to iOS points
       final iosWidth = width / devicePixelRatio;
@@ -166,20 +94,63 @@ Container Size (iOS): ${(width/devicePixelRatio).toStringAsFixed(2)} x ${(height
 
       await tempFile.writeAsBytes(bytes);
 
+      print('''
+=== IMPORTANT TRANSFORMATION VALUES ===
+Scale: ${scale.toStringAsFixed(2)}
+Device Pixel Ratio: ${devicePixelRatio.toStringAsFixed(2)}
+Flutter Translation: ${getTranslationFromMatrix().dx.toStringAsFixed(2)}, ${getTranslationFromMatrix().dy.toStringAsFixed(2)}
+ios Translation : ${    flutterToIos(scale,getTranslationFromMatrix().dx, getTranslationFromMatrix().dy, width, height, iosWidth, iosHeight).dx.toStringAsFixed(2)},
+           ${flutterToIos(scale,getTranslationFromMatrix().dx, getTranslationFromMatrix().dy, width, height, iosWidth, iosHeight).dy.toStringAsFixed(2)}
+Container Size (Flutter): ${width.toStringAsFixed(2)} x ${height.toStringAsFixed(2)}
+Container Size (iOS): ${(width/devicePixelRatio).toStringAsFixed(2)} x ${(height/devicePixelRatio).toStringAsFixed(2)}
+===================================
+''');
+
+
 
       await MethodChannelHelper().testTransform(
         height: iosHeight,
         width: iosWidth,
-        scale: 2,
-        dx: iosWidth - 71.33,
-        dy: 71.33,
+        scale: scale,
+        dx: flutterToIos(scale,getTranslationFromMatrix().dx, getTranslationFromMatrix().dy, width, height, iosWidth, iosHeight).dx,
+         dy: flutterToIos(scale,getTranslationFromMatrix().dx, getTranslationFromMatrix().dy, width, height, iosWidth, iosHeight).dy,
+
+
         imagePath: tempFile.path,
       );
+
+   
+
+
     } catch (error, stackTrace) {
       print('Error in applyTransformation: $error');
       print('Stack trace: $stackTrace');
     }
   }
+
+
+  Offset flutterToIos(
+      double scale,
+      double flutterX,
+      double flutterY,
+      double width,
+      double height,
+      double iosWidth,
+      double iosHeight
+      ) {
+    // Validate input values
+    if (width <= 0 || height <= 0 || iosWidth <= 0 || iosHeight <= 0) {
+      throw ArgumentError("Width, Height, iOSWidth, and iOSHeight must be positive values.");
+    }
+
+    // Apply the derived linear transformations
+    double iosX = (iosWidth / width) * flutterX;
+    double iosY = (-iosHeight / height) * flutterY - iosHeight*(scale-1);
+
+    return Offset(iosX, iosY);
+  }
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -205,22 +176,22 @@ Container Size (iOS): ${(width/devicePixelRatio).toStringAsFixed(2)} x ${(height
                     color: Colors.black,
                   ),
                 ),
-                height: MediaQuery.of(context).size.height - 170,
+                height: MediaQuery.of(context).size.height - 400,
                 child: ClipRRect(
                   child: LayoutBuilder(
                     builder: (context, constrains) {
                       height = constrains.maxHeight;
-                      width = constrains.maxWidth;
+                      width = height * 1000/ 1499;
                       return Stack(
                         alignment: Alignment.center,
                         children: [
                           AspectRatio(
-                            aspectRatio: 1080 / 1920,
+                            aspectRatio: 1000 / 1499,
                             child: InteractiveViewer(
                               transformationController: _controller,
                               boundaryMargin: const EdgeInsets.all(20.0),
                               minScale: 0.1,
-                              maxScale: 2.0,
+                              maxScale: 5.0,
                               child: Container(
                                 color: Colors.black,
                                 child: Image.asset(
@@ -255,7 +226,7 @@ Container Size (iOS): ${(width/devicePixelRatio).toStringAsFixed(2)} x ${(height
                     alignment: Alignment.center,
                     children: [
                       AspectRatio(
-                        aspectRatio: 1080 / 1920,
+                        aspectRatio: 1000 / 1499,
                         child: Transform(
                           transform: _matrix,
                           child: Image.asset(
