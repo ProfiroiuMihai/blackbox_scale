@@ -53,25 +53,7 @@ class _ZoomExampleState extends State<ZoomExample> {
     return Offset(matrix.storage[12], matrix.storage[13]);
   }
 
-  Offset getTranslationForIOS() {
-    final translation = getTranslationFromMatrix();
-    final scale = _controller.value.getMaxScaleOnAxis();
-    final devicePixelRatio = MediaQuery.of(context).devicePixelRatio;
 
-    // 1. Convert Flutter's logical pixels to iOS points by dividing by device pixel ratio
-    final flutterToIosX = translation.dx / devicePixelRatio;
-    final flutterToIosY = translation.dy / devicePixelRatio;
-
-    // 2. Adjust for coordinate system differences:
-    // - Flutter: origin at top-left, positive Y goes down
-    // - iOS: origin at top-left, positive Y goes down (same as Flutter, no flip needed)
-    // - We negate the translation because moving content right/down in Flutter
-    //   means moving the viewport left/up in iOS
-    final adjustedDX = -flutterToIosX;
-    final adjustedDY = -flutterToIosY;
-
-    return Offset(adjustedDX, adjustedDY);
-  }
 
   Future<void> applyTransformation() async {
     try {
@@ -113,14 +95,9 @@ Container Size (iOS): ${(width/devicePixelRatio).toStringAsFixed(2)} x ${(height
         width: iosWidth,
         scale: scale,
         dx: flutterToIos(scale,getTranslationFromMatrix().dx, getTranslationFromMatrix().dy, width, height, iosWidth, iosHeight).dx,
-         dy: flutterToIos(scale,getTranslationFromMatrix().dx, getTranslationFromMatrix().dy, width, height, iosWidth, iosHeight).dy,
-
-
+        dy: flutterToIos(scale,getTranslationFromMatrix().dx, getTranslationFromMatrix().dy, width, height, iosWidth, iosHeight).dy,
         imagePath: tempFile.path,
       );
-
-   
-
 
     } catch (error, stackTrace) {
       print('Error in applyTransformation: $error');
@@ -181,12 +158,12 @@ Container Size (iOS): ${(width/devicePixelRatio).toStringAsFixed(2)} x ${(height
                   child: LayoutBuilder(
                     builder: (context, constrains) {
                       height = constrains.maxHeight;
-                      width = height * 1000/ 1499;
+                      width = height * 6000/ 4000;
                       return Stack(
                         alignment: Alignment.center,
                         children: [
                           AspectRatio(
-                            aspectRatio: 1000 / 1499,
+                            aspectRatio: 6000 / 4000,
                             child: InteractiveViewer(
                               transformationController: _controller,
                               boundaryMargin: const EdgeInsets.all(20.0),
