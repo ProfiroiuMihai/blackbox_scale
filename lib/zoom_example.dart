@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 
-
 class ZoomExample extends StatefulWidget {
   const ZoomExample({super.key});
 
@@ -37,8 +36,6 @@ class _ZoomExampleState extends State<ZoomExample> {
     });
   }
 
-
-
   String _formatMatrix(Matrix4 matrix) {
     return 'Matrix4(\n'
         '  ${matrix.storage[0].toStringAsFixed(2)}, ${matrix.storage[1].toStringAsFixed(2)}, ${matrix.storage[2].toStringAsFixed(2)}, ${matrix.storage[3].toStringAsFixed(2)},\n'
@@ -50,25 +47,15 @@ class _ZoomExampleState extends State<ZoomExample> {
 
   Offset getTranslationFromMatrix() {
     final matrix = _controller.value;
+    // Translation is stored in the last row (indices 12 and 13 for x, y respectively)
     return Offset(matrix.storage[12], matrix.storage[13]);
   }
 
-
-
   Future<void> applyTransformation() async {
     try {
-
-      final devicePixelRatio = MediaQuery.of(context).devicePixelRatio;
-      final scale = _controller.value.getMaxScaleOnAxis();
-
-      // Print key values in a more concise format
-
-
-      // Convert dimensions to iOS points
-      final iosWidth = width / devicePixelRatio;
-      final iosHeight = height / devicePixelRatio;
-
-      final data = await rootBundle.load('assets/fashion_02_background.jpg');
+      final data = await rootBundle.load(
+        'assets/fashion_02_background.jpg',
+      );
       final List<int> bytes = data.buffer.asUint8List();
       final tempPath = await getTemporaryDirectory();
       final tempFilename = '${DateTime.now().millisecondsSinceEpoch}.jpg';
@@ -76,170 +63,65 @@ class _ZoomExampleState extends State<ZoomExample> {
 
       await tempFile.writeAsBytes(bytes);
 
-      print('''
-=== IMPORTANT TRANSFORMATION VALUES ===
-Scale: ${scale.toStringAsFixed(2)}
-Device Pixel Ratio: ${devicePixelRatio.toStringAsFixed(2)}
-Flutter Translation: ${getTranslationFromMatrix().dx.toStringAsFixed(2)}, ${getTranslationFromMatrix().dy.toStringAsFixed(2)}
-ios Translation : ${    flutterToIos(scale,getTranslationFromMatrix().dx, getTranslationFromMatrix().dy, width, height, iosWidth, iosHeight).dx.toStringAsFixed(2)},
-           ${flutterToIos(scale,getTranslationFromMatrix().dx, getTranslationFromMatrix().dy, width, height, iosWidth, iosHeight).dy.toStringAsFixed(2)}
-Container Size (Flutter): ${width.toStringAsFixed(2)} x ${height.toStringAsFixed(2)}
-Container Size (iOS): ${(width/devicePixelRatio).toStringAsFixed(2)} x ${(height/devicePixelRatio).toStringAsFixed(2)}
-===================================
-''');
-
-
-
+      final scale = _controller.value.getMaxScaleOnAxis();
+      final translation = getTranslationFromMatrix();
       await MethodChannelHelper().testTransform(
-        height: iosHeight,
-        width: iosWidth,
+        height: height,
+        width: width,
         scale: scale,
-        dx: flutterToIos(scale,getTranslationFromMatrix().dx, getTranslationFromMatrix().dy, width, height, iosWidth, iosHeight).dx,
-        dy: flutterToIos(scale,getTranslationFromMatrix().dx, getTranslationFromMatrix().dy, width, height, iosWidth, iosHeight).dy,
+        dx: translation.dx,
+        dy: translation.dy,
         imagePath: tempFile.path,
       );
-
-    } catch (error, stackTrace) {
-      print('Error in applyTransformation: $error');
-      print('Stack trace: $stackTrace');
-    }
+      Navigator.of(context).pop();
+    } catch (error, _) {}
   }
-
-
-  Offset flutterToIos(
-      double scale,
-      double flutterX,
-      double flutterY,
-      double width,
-      double height,
-      double iosWidth,
-      double iosHeight
-      ) {
-    // Validate input values
-    if (width <= 0 || height <= 0 || iosWidth <= 0 || iosHeight <= 0) {
-      throw ArgumentError("Width, Height, iOSWidth, and iOSHeight must be positive values.");
-    }
-
-    // Apply the derived linear transformations
-    double iosX = (iosWidth / width) * flutterX;
-    double iosY = (-iosHeight / height) * flutterY - iosHeight*(scale-1);
-
-    return Offset(iosX, iosY);
-  }
-
-
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       floatingActionButton: FloatingActionButton.extended(
         onPressed: applyTransformation,
-        label: const Text('Save To iOS View'),
+        label: const Text('Save To IOS View'),
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              const Padding(
-                padding: EdgeInsets.all(8.0),
-                child: Text(
-                  'InteractiveViewer Example',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        child: Column(
+          children: [
+            Container(
+              height: width,
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: Colors.black,
                 ),
               ),
-              Container(
-                decoration: BoxDecoration(
-                  border: Border.all(
-                    color: Colors.black,
-                  ),
-                ),
-                height: MediaQuery.of(context).size.height - 400,
-                child: ClipRRect(
-                  child: LayoutBuilder(
-                    builder: (context, constrains) {
-                      height = constrains.maxHeight;
-                      width = height * 6000/ 4000;
-                      return Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          AspectRatio(
-                            aspectRatio: 6000 / 4000,
-                            child: InteractiveViewer(
-                              transformationController: _controller,
-                              boundaryMargin: const EdgeInsets.all(20.0),
-                              minScale: 0.1,
-                              maxScale: 5.0,
-                              child: Container(
-                                color: Colors.black,
-                                child: Image.asset(
-                                'assets/fashion_02_background.jpg',
-                                fit: BoxFit.contain,
-                              )),
+              width: MediaQuery.of(context).size.width,
+              child: ClipRRect(
+                child: LayoutBuilder(
+                  builder: (context, constrains) {
+                    width = MediaQuery.of(context).size.width;
+                    height = MediaQuery.of(context).size.width * 1920 / 1080;
+                    return Stack(
+                      children: [
+                        InteractiveViewer(
+                          transformationController: _controller,
+                          minScale: 0.1,
+                          maxScale: 10.0,
+                          child: SizedBox(
+                            width: width,
+                            height: height,
+                            child: Image.asset(
+                              'assets/fashion_02_background.jpg',
+                              fit: BoxFit.contain,
                             ),
                           ),
-                        ],
-                      );
-                    },
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              const Padding(
-                padding: EdgeInsets.all(8.0),
-                child: Text(
-                  'Transform Example (using same matrix)',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-              ),
-              Container(
-                height: MediaQuery.of(context).size.height - 170,
-                decoration: BoxDecoration(
-                  border: Border.all(
-                    color: Colors.black,
-                  ),
-                ),
-                child: ClipRRect(
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      AspectRatio(
-                        aspectRatio: 1000 / 1499,
-                        child: Transform(
-                          transform: _matrix,
-                          child: Image.asset(
-                            'assets/fashion_02_background.jpg',
-                            fit: BoxFit.contain,
-                          ),
                         ),
-                      ),
-                    ],
-                  ),
+                      ],
+                    );
+                  },
                 ),
               ),
-              const SizedBox(height: 20),
-              const Padding(
-                padding: EdgeInsets.all(8.0),
-                child: Text(
-                  'Transformation Matrix:',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Container(
-                  padding: const EdgeInsets.all(8.0),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[200],
-                    borderRadius: BorderRadius.circular(8.0),
-                  ),
-                  child: Text(
-                    _formatMatrix(_matrix),
-                    style: const TextStyle(fontFamily: 'monospace'),
-                  ),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
