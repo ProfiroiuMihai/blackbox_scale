@@ -13,36 +13,13 @@ class ZoomExample extends StatefulWidget {
 
 class _ZoomExampleState extends State<ZoomExample> {
   final TransformationController _controller = TransformationController();
-  Matrix4 _matrix = Matrix4.identity();
   var height = 0.0;
   var width = 0.0;
 
   @override
-  void initState() {
-    super.initState();
-    _controller.addListener(_onTransformationChange);
-  }
-
-  @override
   void dispose() {
-    _controller.removeListener(_onTransformationChange);
     _controller.dispose();
     super.dispose();
-  }
-
-  void _onTransformationChange() {
-    setState(() {
-      _matrix = _controller.value;
-    });
-  }
-
-  String _formatMatrix(Matrix4 matrix) {
-    return 'Matrix4(\n'
-        '  ${matrix.storage[0].toStringAsFixed(2)}, ${matrix.storage[1].toStringAsFixed(2)}, ${matrix.storage[2].toStringAsFixed(2)}, ${matrix.storage[3].toStringAsFixed(2)},\n'
-        '  ${matrix.storage[4].toStringAsFixed(2)}, ${matrix.storage[5].toStringAsFixed(2)}, ${matrix.storage[6].toStringAsFixed(2)}, ${matrix.storage[7].toStringAsFixed(2)},\n'
-        '  ${matrix.storage[8].toStringAsFixed(2)}, ${matrix.storage[9].toStringAsFixed(2)}, ${matrix.storage[10].toStringAsFixed(2)}, ${matrix.storage[11].toStringAsFixed(2)},\n'
-        '  ${matrix.storage[12].toStringAsFixed(2)}, ${matrix.storage[13].toStringAsFixed(2)}, ${matrix.storage[14].toStringAsFixed(2)}, ${matrix.storage[15].toStringAsFixed(2)}\n'
-        ')';
   }
 
   Offset getTranslationFromMatrix() {
@@ -73,7 +50,6 @@ class _ZoomExampleState extends State<ZoomExample> {
         dy: translation.dy,
         imagePath: tempFile.path,
       );
-      Navigator.of(context).pop();
     } catch (error, _) {}
   }
 
@@ -88,7 +64,7 @@ class _ZoomExampleState extends State<ZoomExample> {
         child: Column(
           children: [
             Container(
-              height: width,
+              height: MediaQuery.of(context).size.width,
               decoration: BoxDecoration(
                 border: Border.all(
                   color: Colors.black,
