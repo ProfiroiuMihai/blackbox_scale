@@ -54,7 +54,7 @@ class _ZoomExampleState extends State<ZoomExample> {
   Future<void> applyTransformation() async {
     try {
       final data = await rootBundle.load(
-        'assets/fashion_02_background.jpg',
+        'assets/fashion_02_background2.jpg',
       );
       final List<int> bytes = data.buffer.asUint8List();
       final tempPath = await getTemporaryDirectory();
@@ -110,7 +110,7 @@ class _ZoomExampleState extends State<ZoomExample> {
                             width: width,
                             height: height,
                             child: Image.asset(
-                              'assets/fashion_02_background.jpg',
+                              'assets/fashion_02_background2.jpg',
                               fit: BoxFit.contain,
                             ),
                           ),
