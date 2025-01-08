@@ -81,19 +81,11 @@ import UIKit
     
     
   func processImage(_ image: UIImage, containerSize: CGSize, scale: CGPoint, offset: CGPoint) -> UIImage? {
-      // Debug logging
-      print("Input parameters:")
-      print("Original image size: \(image.size)")
-      print("Container size: \(containerSize)")
-      print("Scale: \(scale)")
-      print("Offset: \(offset)")
-
       UIGraphicsBeginImageContextWithOptions(containerSize, false, 0.0)
       defer { UIGraphicsEndImageContext() }
 
       guard let context = UIGraphicsGetCurrentContext(),
             let cgImage = image.cgImage else {
-          print("Failed to get context or CGImage")
           return nil
       }
 
@@ -104,54 +96,29 @@ import UIKit
       context.translateBy(x: 0, y: containerSize.height)
       context.scaleBy(x: 1.0, y: -1.0)
 
-      // Calculate aspect ratios
-      let imageAspect = image.size.width / image.size.height
+      // Calculate aspect ratios with higher precision
+      let imageAspect = CGFloat(image.size.width) / CGFloat(image.size.height)
       let containerAspect = containerSize.width / containerSize.height
-
-      print("Aspect ratios:")
-      print("Image aspect ratio: \(imageAspect)")
-      print("Container aspect ratio: \(containerAspect)")
 
       // Calculate the size that maintains aspect ratio
       var scaledSize = containerSize
       if imageAspect > containerAspect {
-          // Image is wider than container
           scaledSize.height = containerSize.width / imageAspect
-          print("Image is wider - adjusting height to: \(scaledSize.height)")
       } else {
-          // Image is taller than container
           scaledSize.width = containerSize.height * imageAspect
-          print("Image is taller - adjusting width to: \(scaledSize.width)")
       }
 
-
-
-      // Calculate drawing rect with offset
+      // Use precise CGFloat calculations for the drawing rect
       let drawingRect = CGRect(
-          x: offset.x ,
-          y: offset.y ,
-          width: scaledSize.width*scale.x,
-          height: scaledSize.height*scale.x
+          x: ceil(offset.x),
+          y: ceil(offset.y),
+          width: ceil(scaledSize.width * scale.x),
+          height: ceil(scaledSize.height * scale.y)
       )
-
-      print("Final drawing rect: \(drawingRect)")
-
-      // Validate drawing rect
-      if drawingRect.width <= 0 || drawingRect.height <= 0 {
-          print("ERROR: Invalid drawing rect dimensions")
-          return nil
-      }
-
-         context.setFillColor(UIColor.red.withAlphaComponent(0.3).cgColor)
-          context.fill(CGRect(origin: .zero, size: containerSize))
-
 
       // Draw the image
       context.draw(cgImage, in: drawingRect)
 
-      let resultImage = UIGraphicsGetImageFromCurrentImageContext()
-      print("Result image size: \(String(describing: resultImage?.size))")
-
-      return resultImage
+      return UIGraphicsGetImageFromCurrentImageContext()
   }
 }
