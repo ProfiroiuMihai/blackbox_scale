@@ -17,6 +17,9 @@ class _ZoomExampleState extends State<ZoomExample> {
   Matrix4 _matrix = Matrix4.identity();
   var height = 0.0;
   var width = 0.0;
+  var containerHeight = 200.0;
+  var containerWidth = 300.0;
+
 
   @override
   void initState() {
@@ -60,8 +63,6 @@ class _ZoomExampleState extends State<ZoomExample> {
       final devicePixelRatio = MediaQuery.of(context).devicePixelRatio;
       final scale = _controller.value.getMaxScaleOnAxis();
 
-      // Print key values in a more concise format
-
 
       // Convert dimensions to iOS points
       final iosWidth = width / devicePixelRatio;
@@ -88,8 +89,8 @@ IOs TRanslation: ${flutterToIos(scale,  getTranslationFromMatrix().dx,  getTrans
 
 
       await MethodChannelHelper().testTransform(
-        height: iosHeight,
-        width: iosHeight,
+        height: containerHeight/devicePixelRatio,
+        width: containerWidth/devicePixelRatio,
         scale: scale,
         dx: flutterToIos(scale,  getTranslationFromMatrix().dx,  getTranslationFromMatrix().dy, width, height, iosWidth, iosHeight).dx,
         dy: flutterToIos(scale,  getTranslationFromMatrix().dx,  getTranslationFromMatrix().dy, width, height, iosWidth, iosHeight).dy,
@@ -126,7 +127,9 @@ IOs TRanslation: ${flutterToIos(scale,  getTranslationFromMatrix().dx,  getTrans
     // double iosX = 1/devicePixelRatio * flutterX;
     // double iosY = -1/devicePixelRatio * flutterY - iosHeight*(scale-1);
 
-     double iosX = 1/devicePixelRatio * ((height - width)/2*scale + flutterX);
+
+
+     double iosX = 1/devicePixelRatio * ((containerWidth  - width) / 2 * scale + flutterX);
      double iosY = -1/devicePixelRatio * flutterY - iosHeight*(scale-1);
 
     return Offset(iosX, iosY);
@@ -157,8 +160,8 @@ IOs TRanslation: ${flutterToIos(scale,  getTranslationFromMatrix().dx,  getTrans
                   color: Colors.black,
                 ),
               ),
-              height: 400,
-              width: 400,
+              height: containerHeight,
+              width: containerWidth,
               child: ClipRRect(
                 child: LayoutBuilder(
                   builder: (context, constraints) {
@@ -171,10 +174,10 @@ IOs TRanslation: ${flutterToIos(scale,  getTranslationFromMatrix().dx,  getTrans
                           transformationController: _controller,
                           boundaryMargin: const EdgeInsets.all(70.0),
                           minScale: 0.1,
-                          maxScale: 7.0,
+                          maxScale: 9.0,
                           child: SizedBox(
-                            height: 400,
-                            width: 400,
+                            height: 900,
+                            width: 900,
                             child: Image.asset(
                               'assets/fashion_02_background.jpg',
                               fit: BoxFit.contain,
