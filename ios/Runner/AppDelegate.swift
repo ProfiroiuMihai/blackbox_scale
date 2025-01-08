@@ -80,36 +80,73 @@ import UIKit
   }
     
     
-   func processImage(_ image: UIImage, containerSize: CGSize, scale: CGPoint, offset: CGPoint) -> UIImage? {
-       UIGraphicsBeginImageContextWithOptions(containerSize, false, 0.0)
-       defer { UIGraphicsEndImageContext() }
+  func processImage(
+      _ image: UIImage,
+      containerSize: CGSize,   // The size of the "view" or bounding box in which you want to draw
+      scale: CGPoint,          // User-provided scale from Flutter (we’ll assume scale.x is the uniform scale)
+      offset: CGPoint          // User-provided offset
+  ) -> UIImage? {
+      // 1. Begin a new image context at `containerSize`.
+      UIGraphicsBeginImageContextWithOptions(containerSize, /*opaque*/ false, /*scale*/ 0.0)
+      defer { UIGraphicsEndImageContext() }
 
-       guard let context = UIGraphicsGetCurrentContext(),
-             let cgImage = image.cgImage else {
-           return nil
-       }
+      // 2. Grab references for our context and the CGImage
+      guard
+          let context = UIGraphicsGetCurrentContext(),
+          let cgImage = image.cgImage
+      else {
+          return nil
+      }
 
-       // Clear the context
-       context.clear(CGRect(origin: .zero, size: containerSize))
+      // 3. Clear the context
+      context.clear(CGRect(origin: .zero, size: containerSize))
 
-       // Flip the coordinate system
-       context.translateBy(x: 0, y: containerSize.height)
-       context.scaleBy(x: 1.0, y: -1.0)
+      // 4. Flip the coordinate system (so 0,0 is top-left instead of bottom-left)
+      context.translateBy(x: 0, y: containerSize.height)
+      context.scaleBy(x: 1.0, y: -1.0)
 
-       // Since we're receiving pre-calculated scale and offset from Flutter,
-       // we don't need to recalculate the aspect ratio or do additional scaling
+      // 5. Calculate the aspect ratio of the original image
+      let originalWidth = CGFloat(cgImage.width)
+      let originalHeight = CGFloat(cgImage.height)
+      let imageAspect = originalWidth / originalHeight
 
-       // Calculate the drawing rect directly from the provided scale and offset
-       let drawingRect = CGRect(
-           x: offset.x,
-           y: offset.y,
-           width: containerSize.width * scale.x,
-           height: containerSize.height * scale.x
-       )
+      // 6. Calculate the aspect ratio of the container
+      let containerAspect = containerSize.width / containerSize.height
 
-       // Draw the image
-       context.draw(cgImage, in: drawingRect)
+      // 7. Compute the *fitted* size so that the image is NOT stretched
+      var fittedWidth: CGFloat
+      var fittedHeight: CGFloat
 
-       return UIGraphicsGetImageFromCurrentImageContext()
+      // “Fit” means the limiting dimension is whichever dimension hits first (width or height)
+      if imageAspect > containerAspect {
+          // Image is "wider" (in aspect ratio) than the container
+          // => limit by container width
+          fittedWidth = containerSize.width
+          fittedHeight = fittedWidth / imageAspect
+      } else {
+          // Image is "taller" or same ratio => limit by container height
+          fittedHeight = containerSize.height
+          fittedWidth = fittedHeight * imageAspect
+      }
+
+      // 8. Apply a *uniform* user scaling factor
+      //    (We’ll assume you want the user’s "scale.x" to scale both dimensions the same)
+      //    If you truly want separate x/y scales, see the note below.
+      fittedWidth *= scale.x
+      fittedHeight *= scale.x
+
+      // 9. Calculate the final position
+      //    We’ll center it within containerSize by default,
+      //    plus any additional user offset.
+      let xPos = offset.x + (containerSize.width - fittedWidth) / 2.0
+      let yPos = offset.y + (containerSize.height - fittedHeight) / 2.0
+
+      // 10. Draw the image in that rect
+      let drawingRect = CGRect(x: xPos, y: yPos, width: fittedWidth, height: fittedHeight)
+      context.draw(cgImage, in: drawingRect)
+
+      // 11. Extract the final UIImage from the context
+      return UIGraphicsGetImageFromCurrentImageContext()
+  }
+
    }
-}
