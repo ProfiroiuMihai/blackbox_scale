@@ -116,10 +116,6 @@ import UIKit
           )
         }
 
-        // Calculate center offset
-        let centerOffsetX = (containerSize.width - scaledSize.width) / 2
-        let centerOffsetY = (containerSize.height - scaledSize.height) / 2
-
         // Create drawing rect with proper centering and scaling
         let drawingRect = CGRect(
           x: offset.x,

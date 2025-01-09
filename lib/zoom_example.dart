@@ -92,9 +92,8 @@ class _ZoomExampleState extends State<ZoomExample> {
     double centerOffsetX = (containerWidth - width) / 2;
 
     double iosX = 1/devicePixelRatio * (centerOffsetX * scale + flutterX);
-    // double iosY = -1/devicePixelRatio * (flutterY + height  *(scale-1));
-
-    double iosY = -1/devicePixelRatio * (flutterY + height * (scale-1) - centerOffsetY*scale + (containerHeight - height) * (scale-1));
+    double iosY = -1/devicePixelRatio * (flutterY + height * (scale-1) -
+        centerOffsetY*scale + (containerHeight - height) * (scale-1));
 
     // Debug logging
     print('\n=== Flutter to iOS Conversion Debug ===');
