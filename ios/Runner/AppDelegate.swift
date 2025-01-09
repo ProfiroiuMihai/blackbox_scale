@@ -97,24 +97,36 @@ import UIKit
       context.scaleBy(x: 1.0, y: -1.0)
 
       // Calculate aspect ratios with higher precision
-      let imageAspect = CGFloat(image.size.width) / CGFloat(image.size.height)
-      let containerAspect = containerSize.width / containerSize.height
+    let imageAspect = image.size.width / image.size.height
+        let containerAspect = containerSize.width / containerSize.height
 
-      // Calculate the size that maintains aspect ratio
-      var scaledSize = containerSize
-      if imageAspect > containerAspect {
-          scaledSize.height = containerSize.width / imageAspect
-      } else {
-          scaledSize.width = containerSize.height * imageAspect
-      }
+        // Calculate the size that maintains aspect ratio
+        var scaledSize: CGSize
+        if imageAspect > containerAspect {
+          // Image is wider relative to container
+          scaledSize = CGSize(
+            width: containerSize.width,
+            height: containerSize.width / imageAspect
+          )
+        } else {
+          // Image is taller relative to container
+          scaledSize = CGSize(
+            width: containerSize.height * imageAspect,
+            height: containerSize.height
+          )
+        }
 
-      // Use precise CGFloat calculations for the drawing rect
-      let drawingRect = CGRect(
-          x: ceil(offset.x),
-          y: ceil(offset.y),
-          width: ceil(scaledSize.width * scale.x),
-          height: ceil(scaledSize.height * scale.y)
-      )
+        // Calculate center offset
+        let centerOffsetX = (containerSize.width - scaledSize.width) / 2
+        let centerOffsetY = (containerSize.height - scaledSize.height) / 2
+
+        // Create drawing rect with proper centering and scaling
+        let drawingRect = CGRect(
+          x: offset.x,
+          y: offset.y,
+          width: scaledSize.width * scale.x,
+          height: scaledSize.height * scale.y
+        )
 
       // Draw the image
       context.draw(cgImage, in: drawingRect)

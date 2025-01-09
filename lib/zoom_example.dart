@@ -15,8 +15,9 @@ class _ZoomExampleState extends State<ZoomExample> {
   final TransformationController _controller = TransformationController();
   double height = 0.0;
   double width = 0.0;
-  var containerHeight = 200.0;
-  var containerWidth = 300.0;
+  var containerHeight = 300.0;
+  var containerWidth = 400.0;
+  var imageAspectRatio = 1000/1500;
 
   @override
   void initState() {
@@ -85,8 +86,30 @@ class _ZoomExampleState extends State<ZoomExample> {
     }
 
     final devicePixelRatio = MediaQuery.of(context).devicePixelRatio;
-    double iosX = 1/devicePixelRatio * ((containerWidth - width) / 2 * scale + flutterX);
-    double iosY = -1/devicePixelRatio * (flutterY + height  *(scale-1));
+
+
+    double centerOffsetY = (containerHeight - height) / 2;
+    double centerOffsetX = (containerWidth - width) / 2;
+
+    double iosX = 1/devicePixelRatio * (centerOffsetX * scale + flutterX);
+    // double iosY = -1/devicePixelRatio * (flutterY + height  *(scale-1));
+
+    double iosY = -1/devicePixelRatio * (flutterY + height * (scale-1) - centerOffsetY*scale + (containerHeight - height) * (scale-1));
+
+    // Debug logging
+    print('\n=== Flutter to iOS Conversion Debug ===');
+    print('Input Parameters:');
+    print('scale: $scale');
+    print('flutterX: $flutterX');
+    print('flutterY: $flutterY');
+    print('width: $width');
+    print('height: $height');
+    print('centerOffsetY: $centerOffsetY');
+
+    print('\nFinal Coordinates:');
+    print('iosX: $iosX');
+    print('iosY: $iosY');
+    print('=====================================\n');
 
     return Offset(iosX, iosY);
   }
@@ -119,8 +142,23 @@ class _ZoomExampleState extends State<ZoomExample> {
               child: ClipRRect(
                 child: LayoutBuilder(
                   builder: (context, constraints) {
-                    height = constraints.maxHeight;
-                    width = height * 1000 / 1500;
+                    // height = constraints.maxHeight;
+                    // width = height * 1000 / 1500;
+
+
+                    final containerAspectRatio = containerWidth / containerHeight;
+                    if (imageAspectRatio > containerAspectRatio) {
+                      // Image is wider relative to container
+                      width = constraints.maxWidth;
+                      height = containerWidth / imageAspectRatio;
+                    } else {
+                      // Image is taller relative to container
+                      height = constraints.maxHeight;
+                      width = containerHeight * imageAspectRatio;
+                    }
+
+
+
                     return Stack(
                       alignment: Alignment.center,
                       children: [
@@ -128,7 +166,7 @@ class _ZoomExampleState extends State<ZoomExample> {
                           transformationController: _controller,
                           boundaryMargin: const EdgeInsets.all(70.0),
                           minScale: 0.1,
-                          maxScale: 19.0,
+                          maxScale: 9.0,
                           child: SizedBox(
                             height: 900,
                             width: 900,
