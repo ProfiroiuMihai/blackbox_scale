@@ -46,10 +46,7 @@ class _ZoomExampleState extends State<ZoomExample> {
       final devicePixelRatio = MediaQuery.of(context).devicePixelRatio;
       final scale = _controller.value.getMaxScaleOnAxis();
 
-      // Convert dimensions to iOS points
-      final iosWidth = width / devicePixelRatio;
-      final iosHeight = height / devicePixelRatio;
-
+   
       final data = await rootBundle.load('assets/fashion_02_background.jpg');
       final List<int> bytes = data.buffer.asUint8List();
       final tempPath = await getTemporaryDirectory();
@@ -62,8 +59,8 @@ class _ZoomExampleState extends State<ZoomExample> {
         height: containerHeight/devicePixelRatio,
         width: containerWidth/devicePixelRatio,
         scale: scale,
-        dx: flutterToIos(scale, getTranslationFromMatrix().dx, getTranslationFromMatrix().dy, width, height, iosWidth, iosHeight).dx,
-        dy: flutterToIos(scale, getTranslationFromMatrix().dx, getTranslationFromMatrix().dy, width, height, iosWidth, iosHeight).dy,
+        dx: flutterToIos(scale, getTranslationFromMatrix().dx, getTranslationFromMatrix().dy, width, height,).dx,
+        dy: flutterToIos(scale, getTranslationFromMatrix().dx, getTranslationFromMatrix().dy, width, height, ).dy,
         imagePath: tempFile.path,
       );
     } catch (error, stackTrace) {
@@ -77,13 +74,9 @@ class _ZoomExampleState extends State<ZoomExample> {
       double flutterX,
       double flutterY,
       double width,
-      double height,
-      double iosWidth,
-      double iosHeight
+      double height
       ) {
-    if (width <= 0 || height <= 0 || iosWidth <= 0 || iosHeight <= 0) {
-      throw ArgumentError("Width, Height, iOSWidth, and iOSHeight must be positive values.");
-    }
+
 
     final devicePixelRatio = MediaQuery.of(context).devicePixelRatio;
 
