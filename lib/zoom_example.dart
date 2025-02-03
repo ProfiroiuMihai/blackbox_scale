@@ -15,109 +15,67 @@ class _ZoomExampleState extends State<ZoomExample> {
   final TransformationController _controller = TransformationController();
   double height = 0.0;
   double width = 0.0;
-  var containerHeight = 300.0;
-  var containerWidth = 400.0;
+  var containerHeight = 400.0;
+  var containerWidth = 10.0;
   var imageAspectRatio = 1000/1500;
 
-  @override
-  void initState() {
-    super.initState();
-    _controller.addListener(_onTransformationChange);
+
+  void scale() {
+    // Calculate container and image aspect ratios
+    double containerAspectRatio = containerWidth / containerHeight;
+
+    // If container is relatively narrower than image (current case)
+    if (containerAspectRatio < imageAspectRatio) {
+      width = containerWidth;
+      height = width / imageAspectRatio;
+      var scale = containerHeight / height;
+
+      var verticalTranslation = -((containerHeight - height) * scale / 2);
+      var horizontalTranslation = -((containerWidth*scale - containerWidth)/2);
+      _controller.value = Matrix4.identity()
+        ..translate(horizontalTranslation, verticalTranslation)
+        ..scale(scale);
+    }
+    // If container is relatively wider than image
+    else {
+      height = containerHeight;
+      width = height * imageAspectRatio;
+      var scale = containerWidth / width;
+
+      var horizontalTranslation = -((containerWidth - width) * scale / 2);
+      var verticalTranslation = -((containerHeight*scale - height)/2);
+      _controller.value = Matrix4.identity()
+        ..translate(horizontalTranslation, verticalTranslation)
+        ..scale(scale);
+      print('scale: $scale');
+    }
+
+    print('Container Width: $containerWidth');
+    print('Image Width: $width');
+    print('Container Height: $containerHeight');
+    print('Image Height: $height');
+    print('Container Aspect Ratio: $containerAspectRatio');
+    print('Image Aspect Ratio: $imageAspectRatio');
+
   }
 
   @override
   void dispose() {
-    _controller.removeListener(_onTransformationChange);
+    _controller.removeListener(() {
+      setState(() {});
+    });
     _controller.dispose();
     super.dispose();
-  }
-
-  void _onTransformationChange() {
-    setState(() {});
-  }
-
-  Offset getTranslationFromMatrix() {
-    final matrix = _controller.value;
-    return Offset(matrix.storage[12], matrix.storage[13]);
-  }
-
-  Future<void> applyTransformation() async {
-    try {
-      final devicePixelRatio = MediaQuery.of(context).devicePixelRatio;
-      final scale = _controller.value.getMaxScaleOnAxis();
-
-   
-      final data = await rootBundle.load('assets/fashion_02_background.jpg');
-      final List<int> bytes = data.buffer.asUint8List();
-      final tempPath = await getTemporaryDirectory();
-      final tempFilename = '${DateTime.now().millisecondsSinceEpoch}.jpg';
-      final tempFile = File('${tempPath.path}/$tempFilename');
-
-      await tempFile.writeAsBytes(bytes);
-
-      await MethodChannelHelper().testTransform(
-        height: containerHeight/devicePixelRatio,
-        width: containerWidth/devicePixelRatio,
-        scale: scale,
-        dx: flutterToIos(scale, getTranslationFromMatrix().dx, getTranslationFromMatrix().dy, width, height,).dx,
-        dy: flutterToIos(scale, getTranslationFromMatrix().dx, getTranslationFromMatrix().dy, width, height, ).dy,
-        imagePath: tempFile.path,
-      );
-    } catch (error, stackTrace) {
-      print('Error in applyTransformation: $error');
-      print('Stack trace: $stackTrace');
-    }
-  }
-
-  Offset flutterToIos(
-      double scale,
-      double flutterX,
-      double flutterY,
-      double width,
-      double height
-      ) {
-
-
-    final devicePixelRatio = MediaQuery.of(context).devicePixelRatio;
-
-
-    double centerOffsetY = (containerHeight - height) / 2;
-    double centerOffsetX = (containerWidth - width) / 2;
-
-    double iosX = 1/devicePixelRatio * (centerOffsetX * scale + flutterX);
-    double iosY = -1/devicePixelRatio * (flutterY + height * (scale-1) -
-        centerOffsetY*scale + (containerHeight - height) * (scale-1));
-
-    // Debug logging
-    print('\n=== Flutter to iOS Conversion Debug ===');
-    print('Input Parameters:');
-    print('scale: $scale');
-    print('flutterX: $flutterX');
-    print('flutterY: $flutterY');
-    print('width: $width');
-    print('height: $height');
-    print('centerOffsetY: $centerOffsetY');
-
-    print('\nFinal Coordinates:');
-    print('iosX: $iosX');
-    print('iosY: $iosY');
-    print('=====================================\n');
-
-    return Offset(iosX, iosY);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: applyTransformation,
-        label: const Text('Save To iOS View'),
-      ),
       body: SafeArea(
         child: Column(
           children: [
             const Padding(
-              padding: EdgeInsets.all(108.0),
+              padding: EdgeInsets.all(33.0),
               child: Text(
                 'InteractiveViewer Example',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
@@ -134,34 +92,21 @@ class _ZoomExampleState extends State<ZoomExample> {
               child: ClipRRect(
                 child: LayoutBuilder(
                   builder: (context, constraints) {
-                    // height = constraints.maxHeight;
-                    // width = height * 1000 / 1500;
-
-
-                    final containerAspectRatio = containerWidth / containerHeight;
-                    if (imageAspectRatio > containerAspectRatio) {
-                      // Image is wider relative to container
-                      width = constraints.maxWidth;
-                      height = containerWidth / imageAspectRatio;
-                    } else {
-                      // Image is taller relative to container
-                      height = constraints.maxHeight;
-                      width = containerHeight * imageAspectRatio;
-                    }
-
-
-
+                    // Calculate dimensions based on container width
+                    width = containerWidth;
+                    height = width / imageAspectRatio;
+                    scale();
                     return Stack(
                       alignment: Alignment.center,
                       children: [
                         InteractiveViewer(
                           transformationController: _controller,
-                          boundaryMargin: const EdgeInsets.all(70.0),
+                          // boundaryMargin: const EdgeInsets.all(70.0),
                           minScale: 0.1,
                           maxScale: 9.0,
                           child: SizedBox(
-                            height: 900,
-                            width: 900,
+                            width: containerWidth,
+                            height: containerHeight,
                             child: Image.asset(
                               'assets/fashion_02_background.jpg',
                               fit: BoxFit.contain,
